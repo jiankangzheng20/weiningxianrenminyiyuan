@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>毕节市从业人员健康体检合格证生成与核验系统</title>
+    <!-- 引入 QRCode.js 生成二维码 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- 引入 html2canvas 实现一键截图保存 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f0f2f5; padding: 15px; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #1677ff; margin-bottom: 20px; font-size: 20px; }
+        
+        /* 表单样式 */
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        button { flex: 1; padding: 12px; background: #1677ff; color: #fff; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        button.save-btn { background: #52c41a; }
+        
+        /* 预览卡片（体检合格证样式） */
+        .card { width: 340px; margin: 25px auto 10px; padding: 15px; border: 2px solid #1677ff; border-radius: 10px; background: #fff; position: relative; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .card-header { text-align: center; border-bottom: 2px solid #1677ff; padding-bottom: 8px; margin-bottom: 12px; }
+        .card-title { font-size: 16px; font-weight: bold; color: #1677ff; }
+        .card-body { display: flex; gap: 10px; align-items: flex-start; }
+        .card-info { flex: 1; font-size: 13px; line-height: 1.8; }
+        .card-info div { display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; }
+        .card-photo { width: 85px; height: 115px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f9f9f9; }
+        .card-photo img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .card-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; }
+        .qr-code { width: 70px; height: 70px; }
+        .instructions { font-size: 10px; color: #666; width: 220px; line-height: 1.3; }
+
+        /* 仅核验页面视图 */
+        .verify-view { display: none; text-align: center; padding: 30px 10px; }
+        .verify-badge { display: inline-block; background: #f6ffed; border: 1px solid #b7eb8f; color: #52c41a; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 18px; margin-bottom: 20px; }
+        .verify-table { width: 100%; max-width: 360px; margin: 0 auto; text-align: left; border-collapse: collapse; font-size: 14px; }
+        .verify-table td { padding: 10px; border-bottom: 1px solid #eee; }
+        .verify-table td:first-child { color: #888; width: 35%; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 制作端 -->
+    <div id="admin-view">
+        <h2>毕节市从业人员健康体检合格证制作</h2>
+        <div class="form-group">
+            <label>姓名</label>
+            <input type="text" id="inputName" value="张三" placeholder="请输入姓名">
+        </div>
+        <div class="form-group">
+            <label>性别</label>
+            <select id="inputGender">
+                <option value="男">男</option>
+                <option value="女">女</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>年龄</label>
+            <input type="number" id="inputAge" value="28" placeholder="请输入年龄">
+        </div>
+        <div class="form-group">
+            <label>上传一寸照</label>
+            <input type="file" id="inputPhoto" accept="image/*">
+        </div>
+
+        <div class="btn-group">
+            <button onclick="generateCertificate()">生成合格证</button>
+            <button class="save-btn" onclick="saveToGallery()">一键保存到手机相册</button>
+        </div>
+
+        <!-- 卡片预览 -->
+        <div class="card" id="certificateCard">
+            <div class="card-header">
+                <div class="card-title">毕节市从业人员健康体检合格证</div>
+            </div>
+            <div class="card-body">
+                <div class="card-info">
+                    <div><span>姓名：</span><span id="cardName">张三</span></div>
+                    <div><span>性别：</span><span id="cardGender">男</span></div>
+                    <div><span>年龄：</span><span id="cardAge">28</span></div>
+                    <div><span>证件编号：</span><span id="cardCode">BJWN000000</span></div>
+                    <div><span>发证日期：</span><span id="cardDate">2026-10-22</span></div>
+                    <div><span>体检单位：</span><span>威宁县人民医院</span></div>
+                </div>
+                <div class="card-photo">
+                    <img id="photoPreview" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='85' height='115'><rect width='100%' height='100%' fill='%23eee'/><text x='50%' y='50%' fill='%23aaa' font-size='12' text-anchor='middle' dy='.3em'>一寸照</text></svg>">
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="instructions">
+                    <strong>使用说明：</strong><br>
+                    1. 本证为从业人员健康证明，持证人须妥善保管。<br>
+                    2. 二维码支持扫码实时真伪核验。<br>
+                    3. 有效期自发证之日起一年内有效。
+                </div>
+                <div id="qrcode" class="qr-code"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 扫码核验端（扫描二维码后显示的纯核验视图） -->
+    <div id="verify-view" class="verify-view">
+        <div class="verify-badge">✓ 官方核验有效</div>
+        <table class="verify-table">
+            <tr><td>证件编号</td><td id="vCode">--</td></tr>
+            <tr><td>姓名</td><td id="vName">--</td></tr>
+            <tr><td>性别</td><td id="vGender">--</td></tr>
+            <tr><td>年龄</td><td id="vAge">--</td></tr>
+            <tr><td>发证日期</td><td id="vDate">--</td></tr>
+            <tr><td>体检单位</td><td>威宁县人民医院</td></tr>
+            <tr><td>体检结果</td><td style="color: green; font-weight: bold;">合格</td></tr>
+        </table>
+        <p style="margin-top: 20px; font-size: 12px; color: #999;">毕节市威宁县人民医院 健康体检核验系统</p>
+    </div>
+</div>
+
+<script>
+    let qr;
+
+    // 格式化当前日期 YYYY-MM-DD
+    function getTodayDate() {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
+    // 生成不重复编号 BJWN + 随机6位
+    function generateUniqueCode() {
+        let history = JSON.parse(localStorage.getItem('bjwn_codes') || '[]');
+        let code = '';
+        let isUnique = false;
+
+        while (!isUnique) {
+            const random6 = Math.floor(100000 + Math.random() * 900000);
+            code = 'BJWN' + random6;
+            if (!history.includes(code)) {
+                isUnique = true;
+                history.push(code);
+                localStorage.setItem('bjwn_codes', JSON.stringify(history));
+            }
+        }
+        return code;
+    }
+
+    // 初始或更新二维码
+    function updateQRCode(verifyUrl) {
+        const qrContainer = document.getElementById("qrcode");
+        qrContainer.innerHTML = "";
+        qr = new QRCode(qrContainer, {
+            text: verifyUrl,
+            width: 70,
+            height: 70,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
+    }
+
+    // 点击生成合格证
+    function generateCertificate() {
+        const name = document.getElementById('inputName').value.trim();
+        const gender = document.getElementById('inputGender').value;
+        const age = document.getElementById('inputAge').value.trim();
+
+        if (!name || !age) {
+            alert("请完整填写姓名和年龄！");
+            return;
+        }
+
+        const code = generateUniqueCode();
+        const date = getTodayDate();
+
+        // 更新卡片界面
+        document.getElementById('cardName').innerText = name;
+        document.getElementById('cardGender').innerText = gender;
+        document.getElementById('cardAge').innerText = age;
+        document.getElementById('cardCode').innerText = code;
+        document.getElementById('cardDate').innerText = date;
+
+        // 构建扫码核验 URL
+        const baseUrl = window.location.href.split('?')[0];
+        const verifyUrl = `${baseUrl}?verify=1&code=${encodeURIComponent(code)}&name=${encodeURIComponent(name)}&gender=${encodeURIComponent(gender)}&age=${encodeURIComponent(age)}&date=${encodeURIComponent(date)}`;
+
+        updateQRCode(verifyUrl);
+    }
+
+    // 照片上传预览
+    document.getElementById('inputPhoto').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                document.getElementById('photoPreview').src = evt.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // 一键保存卡片到苹果手机相册（保存为图片）
+    function saveToGallery() {
+        const cardElem = document.getElementById('certificateCard');
+        html2canvas(cardElem, { scale: 3, useCORS: true }).then(canvas => {
+            const image = canvas.toDataURL("image/png");
+            
+            // 兼容 iOS 浏览器：创建新图片供长按或提示保存
+            const newTab = window.open();
+            if (newTab) {
+                newTab.document.write(`<p style="text-align:center;font-size:16px;">长按上方图片选择“保存到“照片””</p><img src="${image}" style="width:100%;max-width:400px;display:block;margin:10px auto;"/>`);
+            } else {
+                // 如果弹出被阻挡，创建临时下载链接
+                const link = document.createElement('a');
+                link.download = `健康体检合格证_${document.getElementById('cardName').innerText}.png`;
+                link.href = image;
+                link.click();
+            }
+        });
+    }
+
+    // 页面加载逻辑：判断是制作端还是二次扫码核验端
+    window.onload = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // 如果包含 verify=1 参数，进入扫码核验模式
+        if (urlParams.get('verify') === '1') {
+            document.getElementById('admin-view').style.display = 'none';
+            document.getElementById('verify-view').style.display = 'block';
+
+            document.getElementById('vCode').innerText = urlParams.get('code') || '--';
+            document.getElementById('vName').innerText = urlParams.get('name') || '--';
+            document.getElementById('vGender').innerText = urlParams.get('gender') || '--';
+            document.getElementById('vAge').innerText = urlParams.get('age') || '--';
+            document.getElementById('vDate').innerText = urlParams.get('date') || '--';
+        } else {
+            // 默认制作模式：自动生成初始合格证
+            generateCertificate();
+        }
+    }
+</script>
+
+</body>
+</html>
